@@ -9,8 +9,10 @@ class MyPelletApi:
         self.port = port
         self.lock = asyncio.Lock()
 
-    async def send_cmd(self, command):
+async def send_cmd(self, command):
+        """Verstuur commando en log alles."""
         async with self.lock:
+            _LOGGER.debug("Versturen naar kachel: %s", command.encode()) # Zie wat we sturen
             reader, writer = None, None
             try:
                 reader, writer = await asyncio.wait_for(
@@ -21,18 +23,13 @@ class MyPelletApi:
                 await writer.drain()
                 
                 data = await asyncio.wait_for(reader.read(64), timeout=3)
+                _LOGGER.debug("Ontvangen van kachel: %s", data) # Zie wat we terugkrijgen
                 
                 return data.decode().strip()
-            except asyncio.TimeoutError:
-                raise Exception("Kachel reageert niet (Timeout)")
-            except ConnectionRefusedError:
-                raise Exception("Verbinding geweigerd (is poort 23 open?)")
             except Exception as e:
-                raise Exception(f"Netwerkfout: {str(e)}")
+                _LOGGER.error("FOUT bij communicatie: %s", e)
+                raise Exception(f"Socket fout: {e}")
             finally:
                 if writer:
                     writer.close()
-                    try:
-                        await writer.wait_closed()
-                    except:
-                        pass
+                    await writer.wait_closed()
