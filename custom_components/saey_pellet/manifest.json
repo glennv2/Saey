@@ -1,7 +1,8 @@
 {
   "domain": "saey_pellet",
   "name": "Saey Pelletstove",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "config_flow": true,
   "documentation": "https://github.com/glennv2/Saey",
   "dependencies": [],
   "codeowners": ["@glennv2"],
