@@ -32,26 +32,23 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             return "Fout bij uitlezen"
 
     async def _async_update_data(self):
-        """De polling loop die alles ophaalt."""
         try:
-            
             # 1. Status ophalen
-            cmd_status = self.calculate_checksum("D90005") # Overeenkomstig met jouw ESPHome
-            status_raw = await self.api.send_cmd(cmd_status)
+            status_raw = await self.api.send_cmd(self.calculate_checksum("D90005"))
+            await asyncio.sleep(0.5) # Geef de kachel even ademruimte
             
             # 2. Temperatuur ophalen
-            cmd_temp = self.calculate_checksum("D10005")
-            temp_raw = await self.api.send_cmd(cmd_temp)
+            temp_raw = await self.api.send_cmd(self.calculate_checksum("D10005"))
+            await asyncio.sleep(0.5)
 
-            # 3. Rookgas (D0000)
-            cmd_smoke = self.calculate_checksum("D00005")
-            smoke_raw = await self.api.send_cmd(cmd_smoke)
+            # 3. Rookgas
+            smoke_raw = await self.api.send_cmd(self.calculate_checksum("D00005"))
 
             return {
                 "burner_status": self.translate_status(status_raw),
                 "room_temp": int(temp_raw[1:5], 16) / 10.0,
                 "flue_gas_temp": int(smoke_raw[1:5], 16),
             }
-            
         except Exception as err:
+            _LOGGER.error("Fout in coordinator: %s", err)
             raise UpdateFailed(f"Communicatie met kachel mislukt: {err}")
