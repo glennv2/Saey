@@ -11,6 +11,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
+        SaeySensor(coordinator, "Saey Kamer Temperatuur", "room_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:home-thermometer"),
         SaeySensor(coordinator, "Saey Rookgas", "flue_gas_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:thermometer"),
         SaeySensor(coordinator, "Saey RPM", "fan_speed", REVOLUTIONS_PER_MINUTE, None, "mdi:fan"),
         SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire")

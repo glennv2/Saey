@@ -9,34 +9,35 @@ class MyPelletApi:
         self.port = port
         self.lock = asyncio.Lock()
 
-    async def send_cmd(self, command):
-        """Verstuur commando en ontvang antwoord."""
+    def _generate_command(self, command):
+        """De exacte methode uit de werkende climate.py."""
+        formatted_cmd = "R" + command
+        checksum = sum(ord(char) for char in formatted_cmd) & 0xFF
+        return "\x1b" + formatted_cmd + f"{checksum:02X}" + "&"
+
+    async def send_cmd(self, command_code):
+        """Verstuur commando (bijv 'D9000') en ontvang antwoord."""
+        raw_command = self._generate_command(command_code)
+        
         async with self.lock:
             reader, writer = None, None
             try:
-                _LOGGER.debug("Verbinden met %s op poort %s", self.host, self.port)
+                _LOGGER.debug("Verbinden met %s:%s", self.host, self.port)
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.host, self.port), timeout=5
                 )
                 
-                _LOGGER.debug("Versturen commando: %s", command.encode())
-                writer.write(command.encode())
+                writer.write(raw_command.encode())
                 await writer.drain()
                 
                 data = await asyncio.wait_for(reader.read(64), timeout=3)
-                _LOGGER.debug("Antwoord ontvangen: %s", data.decode())
-                
-                return data.decode().strip()
-            except asyncio.TimeoutError:
-                _LOGGER.error("Timeout tijdens verbinding met kachel")
-                raise Exception("Kachel reageert niet (Timeout)")
+                response = data.decode().strip()
+                _LOGGER.debug("Antwoord ontvangen: %s", response)
+                return response
             except Exception as e:
-                _LOGGER.error("Fout in MyPelletApi: %s", e)
-                raise Exception(f"Socket fout: {str(e)}")
+                _LOGGER.error("Fout in MyPelletApi bij %s: %s", command_code, e)
+                raise
             finally:
                 if writer:
                     writer.close()
-                    try:
-                        await writer.wait_closed()
-                    except:
-                        pass
+                    await writer.wait_closed()

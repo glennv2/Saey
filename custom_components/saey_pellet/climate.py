@@ -1,9 +1,9 @@
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode, HVACAction
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Setup via de Config Entry (aanbevolen)."""
+    """Setup via de Config Entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([SaeyPelletDevice(coordinator, entry)])
 
@@ -20,27 +20,33 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
             ClimateEntityFeature.TURN_OFF | 
             ClimateEntityFeature.TURN_ON
         )
+        self._attr_temperature_unit = "°C"
 
     @property
     def current_temperature(self):
-        """Haal de temp rechtstreeks uit de coordinator data."""
         return self.coordinator.data.get("room_temp")
 
     @property
-    def hvac_action(self):
-        """Bepaal of hij echt brandt op basis van de status."""
+    def hvac_mode(self):
+        """Geeft de huidige modus weer (Aan/Uit)."""
         status = self.coordinator.data.get("burner_status")
-        if status in ["Stove On", "Flame On", "Eco Idle"]:
+        if status == "Uit":
+            return HVACMode.OFF
+        return HVACMode.HEAT
+
+    @property
+    def hvac_action(self):
+        """Laat het vlam-icoontje oranje worden als hij echt brandt."""
+        status = self.coordinator.data.get("burner_status")
+        if status in ["Aan (Flame On)", "Ontsteken", "Eco Modus"]:
             return HVACAction.HEATING
         return HVACAction.IDLE
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Stuur commando naar de kachel via de API in de coordinator."""
+        """Stuur commando naar de kachel."""
         if hvac_mode == HVACMode.HEAT:
-            # Voorbeeld: start commando
-            await self.coordinator.api.send_cmd(self.coordinator.calculate_checksum("F001"))
+            await self.coordinator.api.send_cmd("F0010")
         elif hvac_mode == HVACMode.OFF:
-            # Voorbeeld: stop commando
-            await self.coordinator.api.send_cmd(self.coordinator.calculate_checksum("F000"))
+            await self.coordinator.api.send_cmd("F0000")
         
         await self.coordinator.async_request_refresh()

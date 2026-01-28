@@ -7,48 +7,40 @@ from .const import DOMAIN, BURNER_STATES
 _LOGGER = logging.getLogger(__name__)
 
 class PelletStoveCoordinator(DataUpdateCoordinator):
-    def __init__(self, hass, api_client):
+    def __init__(self, hass, api):
         super().__init__(
             hass, 
             _LOGGER, 
-            name=DOMAIN, 
+            name="Saey Pelletstove",
             update_interval=timedelta(seconds=10)
         )
-        self.api = api_client 
-
-    def calculate_checksum(self, cmd):
-        """Vertaalt bijv 'D9000' naar een compleet Duepi frame."""
-        full_str = f"R{cmd}0"
-        checksum = sum(full_str.encode('ascii')) & 0xFF
-        return f"\x1b{full_str}{checksum:02X}&"
-
-    def translate_status(self, raw_resp):
-        """Vertaalt het hex-antwoord naar tekst op basis van BURNER_STATES."""
-        try:
-            state_hex = raw_resp[1:5]
-            state_int = int(state_hex, 16)
-            return BURNER_STATES.get(state_int, f"Onbekend ({state_hex})")
-        except (ValueError, IndexError):
-            return "Fout bij uitlezen"
+        self.api = api 
 
     async def _async_update_data(self):
         try:
-            # 1. Status ophalen
-            status_raw = await self.api.send_cmd(self.calculate_checksum("D90005"))
-            await asyncio.sleep(0.5) # Geef de kachel even ademruimte
-            
-            # 2. Temperatuur ophalen
-            temp_raw = await self.api.send_cmd(self.calculate_checksum("D10005"))
-            await asyncio.sleep(0.5)
+            status_raw = await self.api.send_cmd("D9000")
+            await asyncio.sleep(0.3)
+            temp_raw = await self.api.send_cmd("D1000")
+            await asyncio.sleep(0.3)
+            smoke_raw = await self.api.send_cmd("D0000")
+            await asyncio.sleep(0.3)
+            fan_raw = await self.api.send_cmd("EF000")
 
-            # 3. Rookgas
-            smoke_raw = await self.api.send_cmd(self.calculate_checksum("D00005"))
+            def clean_hex(val):
+                if not val: return 0
+                stripped = val.replace('\x1b', '').split('&')[0]
+                return int(stripped, 16)
 
             return {
-                "burner_status": self.translate_status(status_raw),
-                "room_temp": int(temp_raw[1:5], 16) / 10.0,
-                "flue_gas_temp": int(smoke_raw[1:5], 16),
+                "burner_status": self.translate_status(clean_hex(status_raw)),
+                "room_temp": clean_hex(temp_raw[1:5]) / 10.0 if len(temp_raw) > 4 else 0,
+                "flue_gas_temp": clean_hex(smoke_raw[1:5]) if len(smoke_raw) > 4 else 0,
+                "fan_speed": (clean_hex(fan_raw[1:5]) * 10) if len(fan_raw) > 4 else 0,
             }
         except Exception as err:
-            _LOGGER.error("Fout in coordinator: %s", err)
-            raise UpdateFailed(f"Communicatie met kachel mislukt: {err}")
+            _LOGGER.error("Fout bij ophalen kachel data: %s", err)
+            raise UpdateFailed(f"Fout bij ophalen kachel data: {err}")
+
+    def translate_status(self, state_int):
+        status_code = state_int >> 16 
+        return BURNER_STATES.get(status_code, f"Onbekend (0x{status_code:04X})")
