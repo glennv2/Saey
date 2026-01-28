@@ -24,7 +24,7 @@ class MyPelletApi:
             try:
                 _LOGGER.debug("Verbinden met %s:%s", self.host, self.port)
                 reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection(self.host, self.port), timeout=5
+                    asyncio.open_connection(self.host, self.port), timeout=10
                 )
                 
                 writer.write(raw_command.encode())
