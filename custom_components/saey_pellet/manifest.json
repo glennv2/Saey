@@ -1,0 +1,9 @@
+{
+  "domain": "saey_pellet",
+  "name": "Saey Pellet",
+  "version": "2026.1.0",
+  "documentation": "https://github.com/glennv2/Saey",
+  "dependencies": [],
+  "codeowners": ["glennv2"],
+  "iot_class": "local_polling"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Saey Pelletstove",
+  "content_type": "integration",
+  "render_readme": true,
+  "iot_class": "local_polling"
+}
