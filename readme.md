@@ -8,7 +8,7 @@ Deze integratie voegt ondersteuning toe voor Saey pelletkachels (Duepi EVO contr
   - Rookgastemperatuur (`sensor.saey_rookgas`)
   - Ventilator RPM (`sensor.saey_rpm`)
   - Pellet Toevoer Snelheid (`sensor.saey_pellet`)
-  - Status/Fase meldingen
+  - Status meldingen
 
 ## Installatie
 
@@ -19,15 +19,3 @@ Deze integratie voegt ondersteuning toe voor Saey pelletkachels (Duepi EVO contr
 4. Plak de URL van deze GitHub repo en kies categorie 'Integration'.
 5. Klik op **Install**.
 6. Herstart Home Assistant.
-
-### Configuratie
-Voeg het volgende toe aan je `configuration.yaml`:
-
-```yaml
-climate:
-  - platform: saey_pellet
-    name: Pelletstove
-    host: 192.168.x.x  # Het IP van je Wemos/ESP-Link
-    port: 23
-    min_temp: 20
-    max_temp: 30
