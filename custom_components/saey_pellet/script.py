@@ -12,7 +12,7 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             hass, 
             _LOGGER, 
             name="Saey Pelletstove",
-            update_interval=timedelta(seconds=5)
+            update_interval=timedelta(seconds=10)
         )
         self.api = api 
 
@@ -49,9 +49,9 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
                     "burner_status": self.translate_status(clean_hex(status_raw)),
                     "room_temp": clean_hex(temp_raw[1:5]) / 10.0 if len(temp_raw) > 4 else 0,
                     "flue_gas_temp": clean_hex(smoke_raw[1:5]) if len(smoke_raw) > 4 else 0,
-                    "fan_speed": (clean_hex(fan_raw[1:5]) * 10) if len(fan_raw) > 4 else 0,
-                    "power_level": clean_hex(power_raw[1:5]) if len(power_raw) > 4 else 0,
-                    "pellet_speed": clean_hex(pellet_raw[1:5]) if len(pellet_raw) > 4 else 0,
+                    "exhaust_fan_speed": (clean_hex(fan_raw[1:5]) * 10) if len(fan_raw) > 4 else 0,
+                    "power_level": clean_hex(power_raw[1:5]) if len(power_raw) > 4 else 1,
+                    "pellet_speed": clean_hex(pellet_raw[1:5]),
                     "error_code": self.translate_error(clean_hex(error_raw[1:5])) if len(error_raw) > 4 else "OK",
                     "target_temp": clean_hex(target_raw[1:5]) if len(target_raw) > 4 else 20,
                 }
