@@ -1,6 +1,6 @@
 import logging
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.const import UnitOfTemperature, REVOLUTIONS_PER_MINUTE
+from homeassistant.const import UnitOfTemperature, REVOLUTIONS_PER_MINUTE, PERCENTAGE
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
@@ -12,9 +12,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = [
         SaeySensor(coordinator, "Saey Kamer Temperatuur", "room_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:home-thermometer"),
-        SaeySensor(coordinator, "Saey Rookgas", "flue_gas_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:thermometer"),
-        SaeySensor(coordinator, "Saey RPM", "fan_speed", REVOLUTIONS_PER_MINUTE, None, "mdi:fan"),
-        SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire")
+        SaeySensor(coordinator, "Saey Rookgas Temperatuur", "flue_gas_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:thermometer-high"),
+        SaeySensor(coordinator, "Saey Rookgasventilator", "exhaust_fan_speed", REVOLUTIONS_PER_MINUTE, None, "mdi:fan"),
+        SaeySensor(coordinator, "Saey Pelletsnelheid", "pellet_speed", None, None, "mdi:speedometer"),
+        SaeySensor(coordinator, "Saey Vermogensniveau", "power_level", None, None, "mdi:gauge"),
+        SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire"),
+        SaeySensor(coordinator, "Saey Foutmelding", "error_code", None, None, "mdi:alert-circle")
     ]
     async_add_entities(entities)
 
@@ -34,4 +37,19 @@ class SaeySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         """Haal de waarde direct uit de coordinator data dictionary."""
-        return self.coordinator.data.get(self._attribute)
+        val = self.coordinator.data.get(self._attribute)
+        
+        # Kleine extra logica: als de waarde None is, toon dan 'Onbekend'
+        if val is None:
+            return "N/A"
+        return val
+
+    @property
+    def extra_state_attributes(self):
+        """Voeg extra info toe aan de status sensor (bijv. de ruwe hex code)."""
+        if self._attribute == "burner_status":
+            return {
+                "last_update": self.coordinator.last_update_success,
+                "stove_type": "Duepi EVO Base"
+            }
+        return None

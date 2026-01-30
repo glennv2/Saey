@@ -27,26 +27,58 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
         return self.coordinator.data.get("room_temp")
 
     @property
+    def target_temperature(self):
+        """Leest de ingestelde doeltemperatuur uit de data."""
+        return self.coordinator.data.get("target_temp")
+
+    @property
+    def target_temperature_step(self):
+        """Zorgt voor stapjes van 0.5 of 1 graad in de UI."""
+        return 1.0
+
+    @property
     def hvac_mode(self):
         """Geeft de huidige modus weer (Aan/Uit)."""
         status = self.coordinator.data.get("burner_status")
-        if status == "Uit":
+        if status in ["Off", "Stove power off", "Eco Idle"]:
             return HVACMode.OFF
         return HVACMode.HEAT
 
     @property
     def hvac_action(self):
-        """Laat het vlam-icoontje oranje worden als hij echt brandt."""
+        """Laat het vlam-icoontje oranje worden bij actieve verbranding."""
         status = self.coordinator.data.get("burner_status")
-        if status in ["Aan (Flame On)", "Ontsteken", "Eco Modus"]:
+        heating_statuses = [
+            "Ignition starting", 
+            "Ignition starting, fire on", 
+            "Flame On",
+            "Stove On", 
+            "Stove On, Clean"
+        ]
+        if status in heating_statuses:
             return HVACAction.HEATING
-        return HVACAction.IDLE
+        if status == "Eco Idle":
+            return HVACAction.IDLE
+        return HVACAction.OFF
+
+    async def async_set_temperature(self, **kwargs):
+        """Stuur de nieuwe doeltemperatuur in HEX-formaat naar de kachel."""
+        temp = kwargs.get("temperature")
+        if temp is None:
+            return
+
+        set_point_int = int(temp)
+        set_point_hex_str = f"{set_point_int:02X}"
+        cmd = f"F2{set_point_hex_str}0"
+        
+        await self.coordinator.api.send_cmd(cmd)
+        await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Stuur commando naar de kachel."""
-        if hvac_mode == HVACMode.HEAT:
-            await self.coordinator.api.send_cmd("F0010")
-        elif hvac_mode == HVACMode.OFF:
+        """Zet de kachel aan of uit via de PowerLevel commando's."""
+        if hvac_mode == HVACMode.OFF:
             await self.coordinator.api.send_cmd("F0000")
+        elif hvac_mode == HVACMode.HEAT:
+            await self.coordinator.api.send_cmd("F0010")
         
         await self.coordinator.async_request_refresh()
