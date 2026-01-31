@@ -7,7 +7,6 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Setup sensoren via de coordinator (Config Entry)."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
@@ -15,7 +14,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         SaeySensor(coordinator, "Saey Rookgas Temperatuur", "flue_gas_temp", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, "mdi:thermometer-high"),
         SaeySensor(coordinator, "Saey Toerental ventilator", "exhaust_fan_speed", REVOLUTIONS_PER_MINUTE, None, "mdi:fan"),
         SaeySensor(coordinator, "Saey Pelletsnelheid", "pellet_speed", None, None, "mdi:speedometer"),
-        SaeySensor(coordinator, "Saey Vermogensniveau", "power_level", None, None, "mdi:gauge"),
         SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire"),
         SaeySensor(coordinator, "Saey Foutmelding", "error_code", None, None, "mdi:alert-circle"),
         SaeySensor(coordinator, "Saey Totale Branduren", "total_hours", "h", None, "mdi:timer-outline")
@@ -23,10 +21,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
 class SaeySensor(CoordinatorEntity, SensorEntity):
-    """Representatie van een Saey Sensor gekoppeld aan de Coordinator."""
     
     def __init__(self, coordinator, name, attribute, unit, device_class, icon):
-        """Initialiseer de sensor en koppel aan de coordinator."""
         super().__init__(coordinator)
         self._attr_name = name
         self._attribute = attribute
@@ -37,16 +33,13 @@ class SaeySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        """Haal de waarde direct uit de coordinator data dictionary."""
         val = self.coordinator.data.get(self._attribute)
-
         if val is None:
             return "N/A"
         return val
 
     @property
     def extra_state_attributes(self):
-        """Voeg extra info toe aan de status sensor (bijv. de ruwe hex code)."""
         if self._attribute == "burner_status":
             return {
                 "last_update": self.coordinator.last_update_success,

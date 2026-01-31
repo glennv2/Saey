@@ -17,10 +17,14 @@ BURNER_STATES = {
 }
 
 ERROR_CODES = {
+    0: "No error",
     1: "Ignition failure",
     2: "Defective suction",
     3: "Insufficient air intake",
     5: "Out of pellets",
+    6: "No pressure",
+    8: "No power",
     9: "Exhaust motor failure",
+    10: "Overvoltage",
     14: "Overheating",
 }

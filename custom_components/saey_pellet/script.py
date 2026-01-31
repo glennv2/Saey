@@ -26,34 +26,28 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             await asyncio.sleep(0.5)
             fan_raw = await self.api.send_cmd("EF000")
             await asyncio.sleep(0.5)
-            power_raw = await self.api.send_cmd("D3000")   
+            pellet_raw = await self.api.send_cmd("D3000")  
             await asyncio.sleep(0.5)
-            pellet_raw = await self.api.send_cmd("D4000")  
-            await asyncio.sleep(0.5)
-            error_raw = await self.api.send_cmd("DA000")   
-            await asyncio.sleep(0.5)
-            target_raw = await self.api.send_cmd("C6000")   
+            error_raw = await self.api.send_cmd("DA000")    
             await asyncio.sleep(0.5)
             hours_raw = await self.api.send_cmd("D7000")
             await asyncio.sleep(0.5)
+            target_raw = await self.api.send_cmd("C6000")
 
             def clean_hex(val):
                 if not val: return 0
                 try:
-                    # Verwijdert ESC codes, R-prefix en alles na de &
                     stripped = val.replace('\x1b', '').replace('R', '').split('&')[0]
                     return int(stripped, 16)
                 except (ValueError, IndexError, AttributeError):
                     return 0
-
-            raw_status_int = clean_hex(status_raw)
+            raw_status_int = clean_hex(status_raw[1:5]) if len(status_raw) > 4 else 0
 
             return {
                 "burner_status": self.translate_status(raw_status_int),
                 "room_temp": clean_hex(temp_raw[1:5]) / 10.0 if len(temp_raw) > 4 else 0,
                 "flue_gas_temp": clean_hex(smoke_raw[1:5]) if len(smoke_raw) > 4 else 0,
                 "exhaust_fan_speed": (clean_hex(fan_raw[1:5]) * 10) if len(fan_raw) > 4 else 0,
-                "power_level": clean_hex(power_raw[1:5]) if len(power_raw) > 4 else 1,
                 "pellet_speed": clean_hex(pellet_raw[1:5]) if len(pellet_raw) > 4 else 0,
                 "error_code": self.translate_error(clean_hex(error_raw[1:5])) if len(error_raw) > 4 else "All OK",
                 "target_temp": clean_hex(target_raw[1:5]) if len(target_raw) > 4 else 20,
@@ -64,17 +58,8 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Fout: {err}")
 
     def translate_error(self, error_int):
-        """Vertaalt de numerieke foutcode naar een leesbare tekst."""
-        errors = {
-            1: "Ontstekingsfout",
-            2: "Defecte afzuiging",
-            3: "Luchttekort",
-            5: "Pellets op",
-            9: "Rookgasventilator defect",
-            14: "Oververhitting"
-        }
-        return errors.get(error_int, "All OK")
+        from .const import ERROR_CODES
+        return ERROR_CODES.get(error_int, "All OK")
 
     def translate_status(self, state_int):
-        """Vertaalt de ruwe status naar tekst op basis van BURNER_STATES."""
-        return BURNER_STATES.get(state_int, f"Onbekend (code {state_int})")
+        return BURNER_STATES.get(state_int, f"Onbekend (code 0x{state_int:04X})")

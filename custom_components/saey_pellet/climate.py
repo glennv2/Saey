@@ -3,17 +3,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Setup via de Config Entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([SaeyPelletDevice(coordinator, entry)])
 
 class SaeyPelletDevice(CoordinatorEntity, ClimateEntity): 
     def __init__(self, coordinator, entry) -> None:
-        """Koppel de coordinator aan deze entiteit."""
         super().__init__(coordinator)
         self._attr_name = entry.data.get("name", "Saey Pelletstove")
-        self._attr_unique_id = f"{entry.entry_id}_climate"
-        
+        self._attr_unique_id = f"{entry.entry_id}_climate"     
         self._attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
         self._attr_fan_modes = ["1", "2", "3", "4", "5"]
         self._attr_supported_features = (
@@ -52,12 +49,10 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
     
     @property
     def fan_mode(self):
-        """Huidig vermogensniveau."""
-        return str(self.coordinator.data.get("power_level", "1"))
+        return str(self.coordinator.data.get("pellet_speed", "1"))
 
     @property
     def extra_state_attributes(self):
-        """Toon het toerental en pelletsnelheid in de attributenlijst."""
         return {
             "exhaust_fan_speed": self.coordinator.data.get("exhaust_fan_speed", 0),
             "pellet_speed": self.coordinator.data.get("pellet_speed", 0),
@@ -79,7 +74,6 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_set_fan_mode(self, fan_mode):
-        """Stuur het nieuwe vermogensniveau naar de kachel."""
         try:
             level = int(fan_mode)
             
@@ -87,7 +81,6 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
             
             _LOGGER.debug("Sending fan mode command: %s", cmd)
             await self.coordinator.api.send_cmd(cmd)
-            
             await self.coordinator.async_request_refresh()
         except Exception as e:
             _LOGGER.error("Fout bij instellen fan_mode: %s", e)
