@@ -63,6 +63,18 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Fout in coordinator: %s", err)
             raise UpdateFailed(f"Fout: {err}")
 
+    def translate_error(self, error_int):
+        """Vertaalt de numerieke foutcode naar een leesbare tekst."""
+        errors = {
+            1: "Ontstekingsfout",
+            2: "Defecte afzuiging",
+            3: "Luchttekort",
+            5: "Pellets op",
+            9: "Rookgasventilator defect",
+            14: "Oververhitting"
+        }
+        return errors.get(error_int, "All OK")
+
     def translate_status(self, state_int):
         """Vertaalt de ruwe status naar tekst op basis van BURNER_STATES."""
         return BURNER_STATES.get(state_int, f"Onbekend (code {state_int})")
