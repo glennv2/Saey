@@ -17,7 +17,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         SaeySensor(coordinator, "Saey Pelletsnelheid", "pellet_speed", None, None, "mdi:speedometer"),
         SaeySensor(coordinator, "Saey Vermogensniveau", "power_level", None, None, "mdi:gauge"),
         SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire"),
-        SaeySensor(coordinator, "Saey Foutmelding", "error_code", None, None, "mdi:alert-circle")
+        SaeySensor(coordinator, "Saey Foutmelding", "error_code", None, None, "mdi:alert-circle"),
+        SaeySensor(coordinator, "Saey Totale Branduren", "total_hours", "h", None, "mdi:timer-outline")
     ]
     async_add_entities(entities)
 

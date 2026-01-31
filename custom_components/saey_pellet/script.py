@@ -33,6 +33,9 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
             error_raw = await self.api.send_cmd("DA000")   
             await asyncio.sleep(0.5)
             target_raw = await self.api.send_cmd("C6000")   
+            await asyncio.sleep(0.5)
+            hours_raw = await self.api.send_cmd("D7000")
+            await asyncio.sleep(0.5)
 
             def clean_hex(val):
                 if not val: return 0
@@ -54,6 +57,7 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
                 "pellet_speed": clean_hex(pellet_raw[1:5]) if len(pellet_raw) > 4 else 0,
                 "error_code": self.translate_error(clean_hex(error_raw[1:5])) if len(error_raw) > 4 else "All OK",
                 "target_temp": clean_hex(target_raw[1:5]) if len(target_raw) > 4 else 20,
+                "total_hours": clean_hex(hours_raw[1:5]) if len(hours_raw) > 4 else 0
             }
         except Exception as err:
             _LOGGER.error("Fout in coordinator: %s", err)

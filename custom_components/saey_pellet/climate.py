@@ -43,7 +43,7 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
     @property
     def hvac_action(self):
         status = self.coordinator.data.get("burner_status")
-        heating_statuses = ["Ignition starting", "Ignition starting, fire on", "Flame On", "Stove On", "Stove On, Clean"]
+        heating_statuses = ["Ignition starting", "Ignition starting, fire on", "Flame On", "Stove On", "Stove On, Clean", "Turbo Mode"]
         if status in heating_statuses:
             return HVACAction.HEATING
         if status == "Eco Idle":

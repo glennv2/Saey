@@ -13,6 +13,7 @@ BURNER_STATES = {
     0x0801: "Cooldown sequence 1",
     0x0802: "Cooldown sequence 2",
     0x1000: "Eco Idle",
+    0x0401: "Turbo Mode",
 }
 
 ERROR_CODES = {
