@@ -79,7 +79,16 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_set_fan_mode(self, fan_mode):
-        """Stuur vermogensniveau (Stand 1-5)."""
-        level = int(fan_mode)
-        await self.coordinator.api.send_cmd(f"F100{level}0")
-        await self.coordinator.async_request_refresh()
+        """Stuur het nieuwe vermogensniveau naar de kachel."""
+        try:
+            level = int(fan_mode)
+            
+            cmd = f"F100{level}0"
+            
+            _LOGGER.debug("Sending fan mode command: %s", cmd)
+            await self.coordinator.api.send_cmd(cmd)
+            
+            await self.coordinator.async_request_refresh()
+        except Exception as e:
+            _LOGGER.error("Fout bij instellen fan_mode: %s", e)
+            raise

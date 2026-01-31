@@ -38,8 +38,7 @@ class SaeySensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Haal de waarde direct uit de coordinator data dictionary."""
         val = self.coordinator.data.get(self._attribute)
-        
-        # Kleine extra logica: als de waarde None is, toon dan 'Onbekend'
+
         if val is None:
             return "N/A"
         return val
