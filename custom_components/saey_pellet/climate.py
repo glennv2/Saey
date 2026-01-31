@@ -1,16 +1,21 @@
+import logging
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode, HVACAction
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE # <-- Deze ontbrak
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SaeyPelletDevice(coordinator, entry)])
+    async_add_entities([SaeyPelletDevice(coordinator)], True)
 
 class SaeyPelletDevice(CoordinatorEntity, ClimateEntity): 
     def __init__(self, coordinator, entry) -> None:
         super().__init__(coordinator)
-        self._attr_name = entry.data.get("name", "Saey Pelletstove")
-        self._attr_unique_id = f"{entry.entry_id}_climate"     
+        self._attr_name = "Saey Pelletkachel"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_climate"
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS   
         self._attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
         self._attr_fan_modes = ["1", "2", "3", "4", "5"]
         self._attr_supported_features = (
@@ -19,8 +24,6 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
             ClimateEntityFeature.TURN_ON |
             ClimateEntityFeature.FAN_MODE
         )
-        self._attr_temperature_unit = "°C"
-        self._attr_target_temperature_step = 1.0
 
     @property
     def current_temperature(self):
@@ -32,10 +35,8 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
 
     @property
     def hvac_mode(self):
-        status = self.coordinator.data.get("burner_status")
-        if status in ["Off", "Stove power off", "Eco Idle"]:
-            return HVACMode.OFF
-        return HVACMode.HEAT
+        status = self.coordinator.data.get("burner_status", "Off")
+        return HVACMode.OFF if status == "Off" else HVACMode.HEAT
 
     @property
     def hvac_action(self):
@@ -49,7 +50,8 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
     
     @property
     def fan_mode(self):
-        return str(self.coordinator.data.get("pellet_speed", "1"))
+        lvl = self.coordinator.data.get("pellet_speed")
+        return str(lvl) if lvl else "1"
 
     @property
     def extra_state_attributes(self):
@@ -60,28 +62,33 @@ class SaeyPelletDevice(CoordinatorEntity, ClimateEntity):
         }
 
     async def async_set_temperature(self, **kwargs):
-        temp = kwargs.get("temperature")
+        temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is None: return
-        set_point_hex = f"{int(temp):02X}"
-        await self.coordinator.api.send_cmd(f"F2{set_point_hex}0")
-        await self.coordinator.async_request_refresh()
+        try:
+            temp_int = int(temp)
+            checksum = temp_int + 75
+            cmd = f"RF2{temp_int:02X}0{checksum:02X}"            
+            _LOGGER.info(f"Temperatuur instellen op {temp_int} met commando {cmd}")
+            await self.coordinator.api.send_cmd(cmd)
+            await self.coordinator.async_request_refresh()
+        except ValueError:
+             _LOGGER.error(f"Ongeldige temperatuur: {temp}")
 
     async def async_set_hvac_mode(self, hvac_mode):
-        if hvac_mode == HVACMode.OFF:
-            await self.coordinator.api.send_cmd("F0000")
-        elif hvac_mode == HVACMode.HEAT:
-            await self.coordinator.api.send_cmd("F0010")
+        if hvac_mode == HVACMode.HEAT:
+            await self.coordinator.api.send_cmd("RF001059")
+        else:
+            await self.coordinator.api.send_cmd("RF000058")
         await self.coordinator.async_request_refresh()
 
     async def async_set_fan_mode(self, fan_mode):
         try:
             level = int(fan_mode)
+            checksum = level + 88
+            cmd = f"RF00{level}0{checksum:02X}"
             
-            cmd = f"F100{level}0"
-            
-            _LOGGER.debug("Sending fan mode command: %s", cmd)
+            _LOGGER.info(f"Ventilator (vermogen) naar stand {level} met commando {cmd}")
             await self.coordinator.api.send_cmd(cmd)
             await self.coordinator.async_request_refresh()
-        except Exception as e:
-            _LOGGER.error("Fout bij instellen fan_mode: %s", e)
-            raise
+        except ValueError:
+            _LOGGER.error(f"Ongeldige fan mode: {fan_mode}")
