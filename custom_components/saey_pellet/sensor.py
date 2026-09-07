@@ -1,10 +1,11 @@
 import logging
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.const import UnitOfTemperature, REVOLUTIONS_PER_MINUTE, PERCENTAGE
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.const import UnitOfTemperature, UnitOfTime, REVOLUTIONS_PER_MINUTE
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
@@ -16,26 +17,29 @@ async def async_setup_entry(hass, entry, async_add_entities):
         SaeySensor(coordinator, "Saey Pelletsnelheid", "pellet_speed", None, None, "mdi:speedometer"),
         SaeySensor(coordinator, "Saey Status", "burner_status", None, None, "mdi:fire"),
         SaeySensor(coordinator, "Saey Foutmelding", "error_code", None, None, "mdi:alert-circle"),
-        SaeySensor(coordinator, "Saey Totale Branduren", "total_hours", "h", None, "mdi:timer-outline")
+        SaeySensor(coordinator, "Saey Totale Branduren", "total_hours", UnitOfTime.HOURS, None, "mdi:timer-outline", state_class=SensorStateClass.TOTAL_INCREASING),
     ]
     async_add_entities(entities)
 
+
 class SaeySensor(CoordinatorEntity, SensorEntity):
-    
-    def __init__(self, coordinator, name, attribute, unit, device_class, icon):
+
+    def __init__(self, coordinator, name, attribute, unit, device_class, icon, state_class=None):
         super().__init__(coordinator)
         self._attr_name = name
         self._attribute = attribute
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_icon = icon
+        self._attr_state_class = state_class
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{attribute}"
 
     @property
     def native_value(self):
         val = self.coordinator.data.get(self._attribute)
         if val is None:
-            return "N/A"
+            is_numeric = self._attr_device_class is not None or self._attr_native_unit_of_measurement is not None
+            return None if is_numeric else "N/A"
         return val
 
     @property

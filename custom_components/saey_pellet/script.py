@@ -16,46 +16,44 @@ class PelletStoveCoordinator(DataUpdateCoordinator):
         )
         self.api = api 
 
-    async def _async_update_data(self):
+    async def _safe_cmd(self, code):
         try:
-            status_raw = await self.api.send_cmd("D9000")
-            await asyncio.sleep(0.5) 
-            temp_raw = await self.api.send_cmd("D1000")
-            await asyncio.sleep(0.5)
-            smoke_raw = await self.api.send_cmd("D0000")
-            await asyncio.sleep(0.5)
-            fan_raw = await self.api.send_cmd("EF000")
-            await asyncio.sleep(0.5)
-            pellet_raw = await self.api.send_cmd("D3000")  
-            await asyncio.sleep(0.5)
-            error_raw = await self.api.send_cmd("DA000")    
-            await asyncio.sleep(0.5)
-            hours_raw = await self.api.send_cmd("D7000")
-            await asyncio.sleep(0.5)
-            target_raw = await self.api.send_cmd("C6000")
-
-            def clean_hex(val):
-                if not val: return 0
-                try:
-                    stripped = val.replace('\x1b', '').replace('R', '').split('&')[0]
-                    return int(stripped, 16)
-                except (ValueError, IndexError, AttributeError):
-                    return 0
-            raw_status_int = clean_hex(status_raw[1:5]) if len(status_raw) > 4 else 0
-
-            return {
-                "burner_status": self.translate_status(raw_status_int),
-                "room_temp": clean_hex(temp_raw[1:5]) / 10.0 if len(temp_raw) > 4 else 0,
-                "flue_gas_temp": clean_hex(smoke_raw[1:5]) if len(smoke_raw) > 4 else 0,
-                "exhaust_fan_speed": (clean_hex(fan_raw[1:5]) * 10) if len(fan_raw) > 4 else 0,
-                "pellet_speed": clean_hex(pellet_raw[1:5]) if len(pellet_raw) > 4 else 0,
-                "error_code": self.translate_error(clean_hex(error_raw[1:5])) if len(error_raw) > 4 else "All OK",
-                "target_temp": clean_hex(target_raw[1:5]) if len(target_raw) > 4 else 20,
-                "total_hours": clean_hex(hours_raw[1:5]) if len(hours_raw) > 4 else 0
-            }
+            return await self.api.send_cmd(code)
         except Exception as err:
-            _LOGGER.error("Fout in coordinator: %s", err)
-            raise UpdateFailed(f"Fout: {err}")
+            _LOGGER.debug("Command %s failed: %s", code, err)
+            return None
+
+    async def _async_update_data(self):
+        status_raw = await self._safe_cmd("D9000")
+        await asyncio.sleep(0.5)
+        temp_raw = await self._safe_cmd("D1000")
+        await asyncio.sleep(0.5)
+        smoke_raw = await self._safe_cmd("D0000")
+        await asyncio.sleep(0.5)
+        fan_raw = await self._safe_cmd("EF000")
+        await asyncio.sleep(0.5)
+        pellet_raw = await self._safe_cmd("D3000")
+        await asyncio.sleep(0.5)
+        error_raw = await self._safe_cmd("DA000")
+        await asyncio.sleep(0.5)
+        hours_raw = await self._safe_cmd("D7000")
+        await asyncio.sleep(0.5)
+        target_raw = await self._safe_cmd("C6000")
+
+        all_raw = (status_raw, temp_raw, smoke_raw, fan_raw, pellet_raw, error_raw, hours_raw, target_raw)
+        if all(v is None for v in all_raw):
+            raise UpdateFailed("All 8 commands failed — stove is likely unreachable")
+
+        return {
+            "burner_status": self.translate_status(_clean_hex(status_raw)),
+            "room_temp": _clean_hex(temp_raw) / 10.0,
+            "flue_gas_temp": _clean_hex(smoke_raw),
+            "exhaust_fan_speed": _clean_hex(fan_raw) * 10,
+            "pellet_speed": _clean_hex(pellet_raw),
+            "error_code": self.translate_error(_clean_hex(error_raw)),
+            "target_temp": _clean_hex(target_raw, default=20),
+            "total_hours": _clean_hex(hours_raw),
+        }
 
     def translate_error(self, error_int):
         from .const import ERROR_CODES
